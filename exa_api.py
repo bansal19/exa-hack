@@ -18,17 +18,27 @@ def search_info(query):
     return results.results
 
 def get_old_and_new_info(new_info):
-    system_prompt = "You are a helpful assistant. For the new up-to-date information provided to you, find what the old fact used to be. Return the new fact and the old fact in a CSV."
     response = open_ai_client.chat.completions.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": "You are a helpful assistant. For the new up-to-date information provided to you, find what the old fact used to be."},
             {"role": "user", "content": f"This is the new fact. Find out what the old fact used to be: {new_info}"}
         ],
         max_tokens=200
     )
-    summary = response.choices[0].message.content.strip()
-    return summary
+    old_fact = response.choices[0].message.content.strip()
+
+    response_new_fact = open_ai_client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": f"Summarise the following please: {new_info}"}
+        ],
+        max_tokens=200
+    )
+    summarised_new_fact = response_new_fact.choices[0].message.content.strip()
+
+    return old_fact, summarised_new_fact
 
 # Main function to build the CSV
 def build_csv(filename, topics):
@@ -40,7 +50,7 @@ def build_csv(filename, topics):
             results = search_info(topic)
             if results:
                 new_info = results[1].text if len(results) > 1 else "No new information found"
-                row = [topic, get_old_and_new_info(new_info)]
+                row = [topic, get_old_and_new_info(new_info)[0], get_old_and_new_info(new_info)[1]]
                 writer.writerow(row)
 
 # List of topics or facts to search for
